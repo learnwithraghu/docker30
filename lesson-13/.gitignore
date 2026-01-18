@@ -1,0 +1,8 @@
+# Environment variables
+.env
+
+# AWS credentials (if stored locally)
+.aws/
+
+# Lifecycle policy files
+lifecycle-policy.json
