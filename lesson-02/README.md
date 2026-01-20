@@ -68,8 +68,8 @@ echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.
 sudo apt-get update
 sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 
-# Add user to docker group (run without sudo)
-sudo usermod -aG docker $USER
+sudo systemctl start docker
+sudo systemctl status docker
 # Log out and log back in
 ```
 
