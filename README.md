@@ -1,6 +1,29 @@
-# Docker Interview Bootcamp: From Basics to Advanced in 30 Lessons
+# Claude Sessions: Learning AI-Assisted Development
 
-Welcome to the comprehensive Docker bootcamp! This course is designed to take you from Docker basics to advanced concepts, preparing you for Docker interviews and real-world applications.
+Welcome to **Claude Sessions** — a beginner-friendly learning repository for students exploring how to work effectively with Claude AI and modern development tools.
+
+This repo contains two tracks:
+1. 🤖 **Claude AI Concepts** — How to create agents, use skills, and work with AI assistants (this folder)
+2. 🐳 **Docker Bootcamp** — 30 hands-on Docker lessons (see the `lesson-*` folders)
+
+---
+
+## 🤖 Claude AI Track
+
+New to Claude? Start here to understand the key building blocks:
+
+| Concept | Folder | What it is |
+|---------|--------|------------|
+| **Agents** | [`agents/`](./agents/) | AI assistants given a specific role, tools, and personality |
+| **Skills** | [`skills/`](./skills/) | Reusable prompts/capabilities that agents (or you!) can invoke |
+
+👉 **Beginners:** Read [`agents/README.md`](./agents/README.md) first, then [`skills/README.md`](./skills/README.md).
+
+---
+
+## 🐳 Docker Bootcamp Track
+
+A comprehensive Docker course designed to take you from Docker basics to advanced concepts, preparing you for Docker interviews and real-world applications.
 
 ## 📚 Course Structure
 
