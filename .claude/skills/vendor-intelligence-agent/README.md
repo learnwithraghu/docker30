@@ -212,6 +212,26 @@ See `orchestration/patterns.yaml` for full YAML definitions of all 3 patterns.
 
 ---
 
+## Specialized Agents (New)
+
+**Don't want to build your own agent?** Use one of the 5 pre-built agents in [`agents/`](./agents/).
+
+Each agent is optimized for a different use case with a different Claude model:
+
+| Agent | Model | Purpose | Response Time |
+|-------|-------|---------|---|
+| **[Fast Analysis](./agents/fast-analysis-agent.md)** | Claude 3.5 Haiku | Quick vendor lookups | <5 sec |
+| **[Deep Analysis](./agents/deep-analysis-agent.md)** | Claude 3 Opus | Root cause investigation | 20-60 sec |
+| **[Strategic Advisor](./agents/strategic-advisor-agent.md)** | Claude 3.5 Sonnet | Business decisions | 45-90 sec |
+| **[Risk Monitor](./agents/risk-monitor-agent.md)** | Claude 3 Opus | Supply chain risk | 30-90 sec |
+| **[Cost Optimizer](./agents/cost-optimizer-agent.md)** | Claude 3.5 Sonnet | Spend reduction | 45-75 sec |
+
+→ **See [`agents/README.md`](./agents/README.md)** for routing guide & examples.
+
+All agents derive from this parent agent and follow the same vendor-analysis-bigquery skill rules.
+
+---
+
 ## Cost Management
 
 ### Token Budget: 5,000 per request
