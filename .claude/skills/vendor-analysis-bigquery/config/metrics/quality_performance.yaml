@@ -1,0 +1,53 @@
+metrics:
+  - name: defect_rate
+    description: Percentage of deliveries failing quality standards
+    formula: (defective_units / total_units) * 100
+    target: "< 2%"
+    tables: [delivery_receipts, quality_audits]
+    sql_template: |
+      SELECT 
+        d.po_id,
+        SUM(qa.total_units) as total_units,
+        SUM(qa.defective_units) as defective_units,
+        SAFE_DIVIDE(SUM(qa.defective_units), SUM(qa.total_units)) * 100 as defect_rate
+      FROM procurement.delivery_receipts d
+      JOIN procurement.quality_audits qa ON d.po_id = qa.po_id
+      WHERE d.vendor_id = @vendor_id
+      GROUP BY 1
+
+  - name: invoice_accuracy
+    description: Rate of correct billing vs PO/contract
+    formula: (accurate_invoices / total_invoices) * 100
+    target: "> 98%"
+    tables: [invoices, purchase_orders, contracts]
+    sql_template: |
+      SELECT 
+        COUNT(*) as total_invoices,
+        COUNTIF(
+          i.amount = p.po_amount AND
+          i.line_items = p.line_items
+        ) as accurate_invoices,
+        SAFE_DIVIDE(
+          COUNTIF(i.amount = p.po_amount),
+          COUNT(*)
+        ) * 100 as accuracy_rate
+      FROM procurement.invoices i
+      JOIN procurement.purchase_orders p ON i.po_id = p.po_id
+      WHERE i.vendor_id = @vendor_id
+
+  - name: customer_satisfaction_score
+    description: Internal stakeholder rating of vendor
+    formula: AVG(satisfaction_rating)
+    target: "> 4.0/5.0"
+    tables: [vendor_interactions]
+    sql_template: |
+      SELECT 
+        vendor_id,
+        COUNT(*) as interaction_count,
+        AVG(satisfaction_rating) as avg_satisfaction,
+        MIN(satisfaction_rating) as min_rating,
+        MAX(satisfaction_rating) as max_rating
+      FROM procurement.vendor_interactions
+      WHERE vendor_id = @vendor_id
+        AND interaction_date BETWEEN @start_date AND @end_date
+      GROUP BY 1

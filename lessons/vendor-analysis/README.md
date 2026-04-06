@@ -8,8 +8,8 @@ You will see the same domain — answering questions about vendor spend, risk, a
 
 | | What it is | What it can do |
 |--|---|---|
-| **Skill** | A scoped prompt template | Answer vendor questions using BigQuery only, guided by analyst rules |
-| **Agent** | A full AI assistant | Do everything the skill does, PLUS connect to Tableau, Looker, and Docs |
+| **Skill** | A scoped prompt template | Answer vendor questions using BigQuery only, guided by analyst rules and 5 metric definitions |
+| **Agent** | A full AI assistant | Do everything the skill does, PLUS connect to Tableau, Looker, and Docs for visualization and reporting |
 
 ---
 
@@ -46,13 +46,13 @@ The agent then *follows this rulebook* while adding the ability to take action a
 
 | File | What it does |
 |------|-------------|
-| [`skills/vendor-analysis-skill.md`](./skills/vendor-analysis-skill.md) | Scoped prompt that constrains Claude to vendor data only, with BigQuery queries guided by 5 metric definitions |
+| [`skills/vendor-analysis-skill.md`](./skills/vendor-analysis-skill.md) | Scoped prompt that constrains Claude to vendor data only, with BigQuery queries guided by 5 metric definitions and analyst behavior modeling |
 
 ### The Agent
 
 | File | What it does |
 |------|-------------|
-| [`agent/vendor-analysis-agent.md`](./agent/vendor-analysis-agent.md) | Full agent that uses the skill as its rulebook and adds tools: BigQuery execution, Tableau, Looker, and Google Docs |
+| [`agent/vendor-analysis-agent.md`](./agent/vendor-analysis-agent.md) | Full agent that uses the skill as its rulebook and adds tools: BigQuery execution, Tableau, Looker, and Google Docs with orchestration logic |
 
 ---
 
@@ -68,5 +68,5 @@ The vendor analysis agent gives Claude legs to walk around inside that fence —
 
 ## 🚀 Read in This Order
 
-1. [`skills/vendor-analysis-skill.md`](./skills/vendor-analysis-skill.md) — understand the scoped rulebook
-2. [`agent/vendor-analysis-agent.md`](./agent/vendor-analysis-agent.md) — see how the agent wraps the skill with tools
+1. [`skills/vendor-analysis-skill.md`](./skills/vendor-analysis-skill.md) — understand the scoped rulebook with metrics and analyst behavior
+2. [`agent/vendor-analysis-agent.md`](./agent/vendor-analysis-agent.md) — see how the agent wraps the skill with multi-tool orchestration

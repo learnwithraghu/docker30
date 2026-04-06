@@ -1,0 +1,44 @@
+metrics:
+  - name: innovation_contribution
+    description: Process improvements or cost savings initiated by vendor
+    formula: COUNT(innovation_submissions) / year
+    target: "> 2 per year for strategic vendors"
+    tables: [vendor_interactions]
+    sql_template: |
+      SELECT 
+        vendor_id,
+        EXTRACT(YEAR FROM interaction_date) as year,
+        COUNT(*) as innovation_count,
+        SUM(CASE WHEN interaction_type = 'innovation' THEN 1 ELSE 0 END) as innovation_submissions,
+        SUM(CASE WHEN estimated_savings IS NOT NULL THEN estimated_savings ELSE 0 END) as total_savings
+      FROM procurement.vendor_interactions
+      WHERE vendor_id = @vendor_id
+        AND interaction_type = 'innovation'
+      GROUP BY 1, 2
+
+  - name: partnership_tier_alignment
+    description: Vendor performance vs strategic importance
+    formula: CASE WHEN tier = 'strategic' AND performance_score > 80 THEN 'aligned' ELSE 'misaligned'
+    target: "100% of strategic vendors > 80 score"
+    tables: [vendors, vendor_scorecard]
+    sql_template: |
+      SELECT 
+        v.vendor_id,
+        v.vendor_name,
+        v.strategic_tier,
+        ROUND(
+          (
+            COALESCE(CAST(REGEXP_EXTRACT(vs.performance_metrics, r'quality:\s*(\d+)') AS INT64), 50) +
+            COALESCE(CAST(REGEXP_EXTRACT(vs.performance_metrics, r'delivery:\s*(\d+)') AS INT64), 50) +
+            COALESCE(CAST(REGEXP_EXTRACT(vs.performance_metrics, r'compliance:\s*(\d+)') AS INT64), 50)
+          ) / 3
+        ) as composite_score,
+        CASE 
+          WHEN v.strategic_tier = 'strategic' AND 
+               (COALESCE(CAST(REGEXP_EXTRACT(vs.performance_metrics, r'composite_score:\s*(\d+)') AS INT64), 50)) > 80 
+          THEN 'aligned' 
+          ELSE 'misaligned' 
+        END as alignment_status
+      FROM procurement.vendors v
+      LEFT JOIN procurement.vendor_scorecard vs ON v.vendor_id = vs.vendor_id
+      WHERE v.vendor_id = @vendor_id

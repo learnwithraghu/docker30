@@ -1,0 +1,66 @@
+bigquery:
+  command: "python -m bigquery_mcp_server"
+  env:
+    GOOGLE_APPLICATION_CREDENTIALS: "/path/to/creds.json"
+    PROJECT_ID: "procurement-data-warehouse"
+    ALLOWED_DATASETS: "procurement,vendors,contracts"
+  capabilities:
+    - execute_query
+    - explain_plan
+    - estimate_cost
+  cost_per_query: 15
+  timeout_seconds: 60
+  max_results: 1000000
+
+tableau:
+  command: "node tableau-mcp-server/index.js"
+  env:
+    TABLEAU_SERVER: "https://tableau.company.com"
+    SITE_ID: "ProcurementAnalytics"
+    CONTENT_URL: "procurementanalytics"
+  capabilities:
+    - create_dashboard
+    - update_workbook
+    - extract_data
+    - publish_view
+  cost_per_call: 25
+  session_persistence: true
+
+looker:
+  command: "python looker_mcp/main.py"
+  env:
+    LOOKER_BASE_URL: "https://looker.company.com:19999"
+    CLIENT_ID: "claude_agent"
+    TIMEOUT: "30s"
+  capabilities:
+    - run_look
+    - query_explore
+    - list_explores
+    - list_looks
+  cost_per_call: 20
+  session_persistence: true
+
+documents:
+  command: "python document_mcp/server.py"
+  env:
+    DOC_REPOSITORIES: "contracts:s3://contracts-bucket|emails:gmail-api|notes:confluence-api"
+    VECTOR_EMBEDDING_MODEL: "text-embedding-3-small"
+    BATCH_SIZE: "32"
+  capabilities:
+    - semantic_search
+    - extract_entities
+    - summarize_document
+    - find_similar
+  cost_per_1000_pages: 30
+  index_update_frequency: "daily"
+
+tool_loading:
+  strategy: "lazy"
+  initial: ["bigquery"]
+  triggers:
+    - condition: "visualization|dashboard|chart"
+      load: "tableau"
+    - condition: "explore|report|semantic"
+      load: "looker"
+    - condition: "contract|document|amendment"
+      load: "documents"

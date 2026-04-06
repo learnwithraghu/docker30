@@ -1,0 +1,43 @@
+metrics:
+  - name: on_time_delivery_rate
+    description: Percentage of orders delivered by promised date
+    formula: (on_time_deliveries / total_deliveries) * 100
+    target: "> 95%"
+    tables: [purchase_orders, delivery_receipts]
+    sql_template: |
+      SELECT 
+        COUNT(*) as total_deliveries,
+        COUNTIF(d.actual_delivery <= p.promised_date) as on_time_deliveries,
+        SAFE_DIVIDE(COUNTIF(d.actual_delivery <= p.promised_date), COUNT(*)) * 100 as on_time_rate
+      FROM procurement.purchase_orders p
+      JOIN procurement.delivery_receipts d ON p.po_id = d.po_id
+      WHERE p.vendor_id = @vendor_id
+        AND p.po_date BETWEEN @start_date AND @end_date
+
+  - name: supplier_cycle_time
+    description: Days from PO issuance to delivery
+    formula: AVG(DATE_DIFF(delivery_date, po_date, DAY))
+    target: "< industry benchmark"
+    tables: [purchase_orders, delivery_receipts]
+    sql_template: |
+      SELECT 
+        AVG(DATE_DIFF(DAY, p.po_date, d.actual_delivery)) as avg_cycle_time_days,
+        MIN(DATE_DIFF(DAY, p.po_date, d.actual_delivery)) as min_cycle_time_days,
+        MAX(DATE_DIFF(DAY, p.po_date, d.actual_delivery)) as max_cycle_time_days
+      FROM procurement.purchase_orders p
+      JOIN procurement.delivery_receipts d ON p.po_id = d.po_id
+      WHERE p.vendor_id = @vendor_id
+
+  - name: order_accuracy
+    description: Rate of correct quantity/item deliveries
+    formula: (accurate_orders / total_orders) * 100
+    target: "> 98%"
+    tables: [purchase_orders, delivery_receipts, quality_audits]
+    sql_template: |
+      SELECT 
+        COUNT(DISTINCT p.po_id) as total_orders,
+        COUNTIF(qa.defect_count = 0) as accurate_orders,
+        SAFE_DIVIDE(COUNTIF(qa.defect_count = 0), COUNT(DISTINCT p.po_id)) * 100 as accuracy_rate
+      FROM procurement.purchase_orders p
+      LEFT JOIN procurement.quality_audits qa ON p.po_id = qa.po_id
+      WHERE p.vendor_id = @vendor_id
