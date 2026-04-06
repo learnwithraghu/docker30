@@ -1,0 +1,50 @@
+metrics:
+  - name: esg_compliance_score
+    description: Weighted score of environmental, social, governance factors
+    formula: (environmental_score * 0.4) + (social_score * 0.3) + (governance_score * 0.3)
+    target: "> 80/100"
+    tables: [risk_assessments, sustainability_metrics]
+    sql_template: |
+      SELECT 
+        v.vendor_id,
+        v.vendor_name,
+        COALESCE(sm.environmental_score, 50) * 0.4 +
+        COALESCE(sm.social_score, 50) * 0.3 +
+        COALESCE(sm.governance_score, 50) * 0.3 as esg_score
+      FROM procurement.vendors v
+      LEFT JOIN procurement.sustainability_metrics sm ON v.vendor_id = sm.vendor_id
+      WHERE v.vendor_id = @vendor_id
+
+  - name: geographic_concentration_risk
+    description: Dependency on single region/country
+    formula: MAX(spend_by_country) / total_spend
+    target: "< 40% for any single country"
+    tables: [vendors, spend_transactions]
+    sql_template: |
+      WITH spend_by_country AS (
+        SELECT 
+          v.country,
+          SUM(t.amount) as country_spend
+        FROM procurement.spend_transactions t
+        JOIN procurement.vendors v ON t.vendor_id = v.vendor_id
+        WHERE t.vendor_id = @vendor_id
+          AND t.event_date BETWEEN @start_date AND @end_date
+        GROUP BY 1
+      )
+      SELECT 
+        MAX(country_spend) / SUM(country_spend) * 100 as concentration_risk_pct
+      FROM spend_by_country
+
+  - name: contract_compliance_rate
+    description: Adherence to contracted terms vs actuals
+    formula: (compliant_transactions / total_transactions) * 100
+    target: "> 90%"
+    tables: [contracts, spend_transactions]
+    sql_template: |
+      SELECT 
+        COUNT(*) as total_transactions,
+        COUNTIF(t.amount <= c.unit_price AND quantity_ordered >= t.quantity) as compliant_transactions,
+        SAFE_DIVIDE(COUNTIF(t.amount <= c.unit_price), COUNT(*)) * 100 as compliance_rate
+      FROM procurement.spend_transactions t
+      JOIN procurement.contracts c ON t.contract_id = c.contract_id
+      WHERE t.vendor_id = @vendor_id

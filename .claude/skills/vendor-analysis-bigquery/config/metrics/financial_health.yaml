@@ -1,0 +1,42 @@
+metrics:
+  - name: spend_under_management
+    description: Percentage of spend covered by negotiated contracts
+    formula: (contracted_spend / total_spend) * 100
+    target: "> 85%"
+    tables: [spend_transactions, contracts]
+    sql_template: |
+      SELECT 
+        SAFE_DIVIDE(
+          SUM(CASE WHEN c.contract_id IS NOT NULL THEN t.amount END),
+          SUM(t.amount)
+        ) * 100 as pct
+      FROM procurement.spend_transactions t
+      LEFT JOIN procurement.contracts c ON t.contract_id = c.contract_id
+      WHERE t.event_date BETWEEN @start_date AND @end_date
+
+  - name: cost_avoidance
+    description: Estimated savings from negotiation vs market rates
+    formula: sum((market_rate - negotiated_rate) * volume)
+    target: "> 5% of spend"
+    tables: [spend_transactions, contracts, market_rates]
+    sql_template: |
+      SELECT 
+        SUM((mr.market_rate - c.negotiated_rate) * t.volume) as cost_avoidance
+      FROM procurement.spend_transactions t
+      JOIN procurement.contracts c ON t.contract_id = c.contract_id
+      LEFT JOIN procurement.market_rates mr ON c.sku = mr.sku
+      WHERE t.event_date BETWEEN @start_date AND @end_date
+
+  - name: payment_terms_optimization
+    description: Working capital impact from payment terms
+    formula: avg(payment_term_days) * daily_spend
+    target: "Maximize without damaging supplier relations"
+    tables: [invoices, vendors]
+    sql_template: |
+      SELECT 
+        AVG(c.payment_term_days) as avg_payment_days,
+        SAFE_DIVIDE(SUM(i.amount), DATEDIFF(DAY, MIN(i.invoice_date), MAX(i.invoice_date))) as daily_spend
+      FROM procurement.invoices i
+      JOIN procurement.vendors v ON i.vendor_id = v.vendor_id
+      JOIN procurement.contracts c ON i.contract_id = c.contract_id
+      WHERE i.invoice_date BETWEEN @start_date AND @end_date

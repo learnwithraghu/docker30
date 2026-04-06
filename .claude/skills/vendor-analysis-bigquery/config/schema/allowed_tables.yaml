@@ -1,0 +1,136 @@
+table_whitelist:
+  - name: procurement.vendors
+    description: Master vendor registry
+    partition_column: updated_at
+    cluster_columns: [category, region, risk_tier]
+    estimated_size_gb: 2
+    sample_columns:
+      - vendor_id (INTEGER)
+      - vendor_name (STRING)
+      - category (STRING)
+      - risk_tier (STRING)
+      - country (STRING)
+      - status (STRING)
+
+  - name: procurement.spend_transactions
+    description: Individual spend transactions
+    partition_column: event_date
+    cluster_columns: [vendor_id, category, cost_center]
+    estimated_size_gb: 450
+    requires_filter: true
+    sample_columns:
+      - transaction_id (STRING)
+      - vendor_id (INTEGER)
+      - event_date (DATE)
+      - amount (NUMERIC)
+      - category (STRING)
+      - contract_id (STRING)
+
+  - name: procurement.purchase_orders
+    description: Purchase order headers
+    partition_column: po_date
+    cluster_columns: [vendor_id, status, category]
+    estimated_size_gb: 120
+    sample_columns:
+      - po_id (STRING)
+      - vendor_id (INTEGER)
+      - po_date (DATE)
+      - po_amount (NUMERIC)
+      - promised_date (DATE)
+      - status (STRING)
+
+  - name: procurement.contracts
+    description: Contract terms and metadata
+    partition_column: created_at
+    cluster_columns: [vendor_id, category, status]
+    estimated_size_gb: 8
+    sample_columns:
+      - contract_id (STRING)
+      - vendor_id (INTEGER)
+      - start_date (DATE)
+      - end_date (DATE)
+      - contract_value (NUMERIC)
+      - payment_term_days (INTEGER)
+
+  - name: procurement.invoices
+    description: Invoice processing data
+    partition_column: invoice_date
+    cluster_columns: [vendor_id, status]
+    estimated_size_gb: 85
+    sample_columns:
+      - invoice_id (STRING)
+      - vendor_id (INTEGER)
+      - po_id (STRING)
+      - invoice_date (DATE)
+      - amount (NUMERIC)
+      - status (STRING)
+
+  - name: procurement.delivery_receipts
+    description: Goods receipt confirmation
+    partition_column: delivery_date
+    cluster_columns: [vendor_id, status]
+    estimated_size_gb: 95
+    sample_columns:
+      - receipt_id (STRING)
+      - po_id (STRING)
+      - vendor_id (INTEGER)
+      - actual_delivery (DATE)
+      - quantity_received (NUMERIC)
+      - inspection_status (STRING)
+
+  - name: procurement.quality_audits
+    description: Inspection results
+    partition_column: audit_date
+    cluster_columns: [vendor_id, category]
+    estimated_size_gb: 45
+    sample_columns:
+      - audit_id (STRING)
+      - po_id (STRING)
+      - vendor_id (INTEGER)
+      - audit_date (DATE)
+      - total_units (NUMERIC)
+      - defective_units (NUMERIC)
+
+  - name: procurement.risk_assessments
+    description: Risk scores and factors
+    partition_column: assessment_date
+    cluster_columns: [vendor_id, risk_type]
+    estimated_size_gb: 12
+    sample_columns:
+      - assessment_id (STRING)
+      - vendor_id (INTEGER)
+      - risk_type (STRING)
+      - risk_score (NUMERIC)
+      - assessment_date (DATE)
+
+  - name: procurement.sustainability_metrics
+    description: ESG data
+    partition_column: measurement_date
+    cluster_columns: [vendor_id]
+    estimated_size_gb: 5
+    sample_columns:
+      - metric_id (STRING)
+      - vendor_id (INTEGER)
+      - environmental_score (NUMERIC)
+      - social_score (NUMERIC)
+      - governance_score (NUMERIC)
+
+  - name: procurement.vendor_interactions
+    description: Communication logs and interactions
+    partition_column: interaction_date
+    cluster_columns: [vendor_id, interaction_type]
+    estimated_size_gb: 35
+    sample_columns:
+      - interaction_id (STRING)
+      - vendor_id (INTEGER)
+      - interaction_type (STRING)
+      - interaction_date (DATE)
+      - satisfaction_rating (NUMERIC)
+      - notes (STRING)
+
+optimization_rules:
+  - "Always use partition_column in WHERE clause"
+  - "Prefer cluster_columns in GROUP BY"
+  - "Use SAFE_DIVIDE to avoid division by zero"
+  - "Materialize CTEs for complex multi-step queries"
+  - "LIMIT 100 for initial exploration"

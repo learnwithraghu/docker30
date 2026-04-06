@@ -1,0 +1,322 @@
+---
+name: anomaly_investigation
+description: Multi-step investigation of vendor cost or performance anomalies
+---
+
+# Pattern: Anomaly Investigation
+
+**Trigger**: User asks "Why did [vendor] [metric] [change]?"
+
+## Steps
+
+### 1. Quantify the Anomaly (BigQuery)
+
+Cost: ~200 tokens
+
+```yaml
+tool: bigquery_query
+goal: "Determine the magnitude and timing of the change"
+sql: |
+  SELECT 
+    DATE_TRUNC(event_date, MONTH) as month,
+    vendor_id,
+    SUM(amount) as monthly_spend,
+    LAG(SUM(amount)) OVER (ORDER BY DATE_TRUNC(event_date, MONTH)) as prior_month,
+    SAFE_DIVIDE(SUM(amount) - LAG(SUM(amount)) OVER (ORDER BY DATE_TRUNC(event_date, MONTH)), 
+                LAG(SUM(amount)) OVER (ORDER BY DATE_TRUNC(event_date, MONTH))) * 100 as pct_change
+  FROM procurement.spend_transactions
+  WHERE vendor_id = @vendor_id
+    AND event_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 6 MONTH)
+  GROUP BY month, vendor_id
+  ORDER BY month DESC
+action: "Store anomaly month and % change in context"
+```
+
+### 2. Get Business Context (Looker)
+
+Cost: ~300 tokens
+
+```yaml
+tool: looker_explore
+goal: "Understand vendor category and peer performance"
+explore: "vendor_performance"
+filters:
+  vendor_id: "@vendor_id"
+  timeframe: "last_6_months"
+fields:
+  - vendor_name
+  - category
+  - po_count
+  - on_time_delivery_rate
+action: "Compare this vendor's operations vs category"
+```
+
+### 3. Root Cause: Search Documents (Documents)
+
+Cost: ~500 tokens
+
+```yaml
+tool: document_search
+goal: "Find contractual or communication explanation"
+queries:
+  - "Vendor [@vendor_name] pricing change contract amendment [@anomaly_month]"
+  - "Cost increase price adjustment [@vendor_name]"
+  - "New line items [@vendor_name] [@anomaly_month]"
+action: "Extract key insights about cause"
+```
+
+### 4. Visualize Findings (Tableau)
+
+Cost: ~400 tokens
+
+```yaml
+tool: create_tableau_dashboard
+goal: "Present anomaly to stakeholders"
+title: "Vendor Cost Anomaly: [@vendor_name]"
+metrics:
+  - chart_type: "line"
+    metric: "monthly_spend"
+    highlight_point: "anomaly_month"
+  - chart_type: "bar"
+    metric: "spend_by_category"
+    filter: "anomaly_month"
+action: "Generate dashboard URL for sharing"
+```
+
+### 5. Synthesize & Recommend (Synthesis)
+
+```yaml
+format: "Executive summary"
+content:
+  - Quantified change: "Spend increased XX% in [month]"
+  - Likely cause: "Document search found [evidence]"
+  - Peer comparison: "Category average is [value]"
+  - Recommended action: "[Action] based on [reasoning]"
+  - Dashboard: "View details at [URL]"
+```
+
+## Token Budget: ~1,400 (fits within 5,000 limit)
+
+---
+
+name: strategic_sourcing
+description: Vendor renewal vs switch decision analysis
+---
+
+# Pattern: Strategic Sourcing
+
+**Trigger**: User asks "Should we renew with [Vendor A] or switch to [Vendor B]?"
+
+## Steps
+
+### 1. Parallel Data Collection (BigQuery)
+
+Cost: ~800 tokens (2 complex queries)
+
+```yaml
+tool: bigquery_query
+goal: "Compare 3-year performance of both vendors"
+queries:
+  - vendor_a_metrics: |
+      SELECT 
+        'Vendor A' as vendor,
+        SUM(t.amount) as three_year_spend,
+        COUNT(DISTINCT p.po_id) as po_count,
+        ROUND(SAFE_DIVIDE(COUNTIF(d.actual_delivery <= p.promised_date), COUNT(*)) * 100, 1) as otd_rate,
+        ROUND(SAFE_DIVIDE(SUM(CASE WHEN qa.defective_units > 0 THEN 1 ELSE 0 END), COUNT(*)) * 100, 1) as defect_pct
+      FROM procurement.spend_transactions t
+      LEFT JOIN procurement.purchase_orders p ON t.po_id = p.po_id
+      LEFT JOIN procurement.delivery_receipts d ON p.po_id = d.po_id
+      LEFT JOIN procurement.quality_audits qa ON d.po_id = qa.po_id
+      WHERE t.vendor_id = @vendor_a_id
+        AND t.event_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 3 YEAR)
+      
+  - vendor_b_metrics: [Same as above with @vendor_b_id]
+```
+
+### 2. Document: Contract Terms (Documents)
+
+Cost: ~500 tokens
+
+```yaml
+tool: document_search
+goal: "Extract contract terms for both vendors"
+queries:
+  - "Vendor A contract exit clause renewal terms pricing"
+  - "Vendor B contract SLA terms performance guarantees"
+action: "Summarize key contract differences"
+```
+
+### 3. Semantic Layer: Category Benchmarks (Looker)
+
+Cost: ~600 tokens
+
+```yaml
+tool: looker_explore
+goal: "Compare against category baseline"
+explore: "category_benchmarks"
+filters:
+  category: "@category"
+  timeframe: "last_36_months"
+metrics:
+  - avg_spend_per_vendor
+  - avg_otd_rate
+  - avg_defect_rate
+```
+
+### 4. Calculate Switching Costs (BigQuery)
+
+Cost: ~200 tokens
+
+```yaml
+tool: bigquery_query
+goal: "Quantify cost of switching"
+sql: |
+  SELECT 
+    'Switching costs' as cost_type,
+    SUM(CASE WHEN cost_category = 'setup' THEN amount END) as setup_costs,
+    SUM(CASE WHEN cost_category = 'training' THEN amount END) as training_costs,
+    SUM(CASE WHEN cost_category = 'transition' THEN amount END) as transition_costs,
+    SUM(amount) as total_switch_cost
+  FROM procurement.cost_estimates
+  WHERE from_vendor_id = @vendor_a_id
+    AND to_vendor_id = @vendor_b_id
+```
+
+### 5. Create Comparison Dashboard (Tableau)
+
+Cost: ~400 tokens
+
+```yaml
+tool: create_tableau_dashboard
+title: "Vendor Sourcing Decision: [@vendor_a] vs [@vendor_b]"
+charts:
+  - type: "comparison matrix"
+    dimensions: [spend, otd_rate, defect_rate, cost, satisfaction]
+  - type: "contract terms"
+    data:
+      - Renewal date
+      - Price escalation clause
+      - Exit penalties
+  - type: "financial impact"
+    data:
+      - 3-year cost comparison
+      - Switching costs
+      - NPV of each option
+```
+
+### 6. Decision Framework (Synthesis)
+
+```yaml
+format: "Sourcing recommendation memo"
+sections:
+  - Vendor A: "Strengths/Weaknesses with scores"
+  - Vendor B: "Strengths/Weaknesses with scores"
+  - Quantified comparison: "3-year TCO including switch costs"
+  - Risk assessment: "Key differences in contract terms"
+  - Recommendation: "Switch vs Renew with rationale"
+  - Next steps: "If switching: timeline, transition plan"
+```
+
+## Token Budget: ~2,500 (fits within 5,000 limit)
+
+---
+
+name: proactive_monitoring
+description: Autonomous weekly/monthly vendor health monitoring
+---
+
+# Pattern: Proactive Monitoring (Scheduled)
+
+**Trigger**: Runs on a schedule (e.g., weekly), no user input
+
+## Steps
+
+### 1. Anomaly Detection (BigQuery)
+
+Cost: ~200 tokens
+
+```yaml
+tool: bigquery_query
+schedule: "weekly"
+goal: "Detect vendors with >20% spend variance"
+sql: |
+  WITH weekly_spend AS (
+    SELECT 
+      vendor_id,
+      EXTRACT(WEEK FROM event_date) as week,
+      DATE_TRUNC(event_date, WEEK) as week_start,
+      SUM(amount) as weekly_spend,
+      AVG(SUM(amount)) OVER (PARTITION BY vendor_id ORDER BY EXTRACT(WEEK FROM event_date) ROWS BETWEEN 12 PRECEDING AND 1 PRECEDING) as avg_prev_weeks
+    FROM procurement.spend_transactions
+    WHERE event_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 16 WEEK)
+    GROUP BY vendor_id, week, week_start
+  )
+  SELECT 
+    vendor_id,
+    week_start,
+    weekly_spend,
+    avg_prev_weeks,
+    SAFE_DIVIDE(ABS(weekly_spend - avg_prev_weeks), avg_prev_weeks) * 100 as variance_pct
+  WHERE SAFE_DIVIDE(ABS(weekly_spend - avg_prev_weeks), avg_prev_weeks) * 100 > 20
+  ORDER BY variance_pct DESC
+```
+
+### 2. Risk Score Check (Looker)
+
+Cost: ~300 tokens
+
+```yaml
+tool: looker_explore
+schedule: "weekly"
+goal: "Flag vendors with risk_score > 7"
+explore: "vendor_risk_assessment"
+filters:
+  risk_score: "> 7"
+metrics:
+  - vendor_name
+  - risk_score
+  - risk_category
+```
+
+### 3. Conditional Actions
+
+```yaml
+if: high_variance_vendors OR high_risk_vendors
+  then:
+    # For each anomaly vendor:
+    - search_documents:
+        query: "Vendor [@name] recent changes emails contract"
+        goal: "Understand recent activity"
+    
+    - create_tableau_dashboard:
+        title: "Vendor Risk Watch [@vendor]"
+        metrics: [spend_trend, quality_trend, risk_score]
+    
+    - notify: "Procurement manager"
+      message: "Vendor [@vendor] flagged for review: variance=[@value]%"
+```
+
+### 4. Summary Report (Auto-generated)
+
+Cost: ~200 tokens
+
+```yaml
+tool: write_google_doc
+schedule: "weekly"
+title: "Vendor Health Report - Week of [@date]"
+content:
+  - "Anomalies detected": list of vendors
+  - "High-risk vendors": list with scores
+  - "Action items": recommended follow-ups
+  - "Dashboard link": Risk Watch dashboard
+```
+
+## Token Budget: ~700 per week (very efficient)
+
+## Benefits
+
+- **Proactive**: Catch issues before they become problems
+- **Autonomous**: Runs without user intervention
+- **Efficient**: Uses lazy tool loading, minimal context
+- **Actionable**: Generates notifications and dashboards automatically
